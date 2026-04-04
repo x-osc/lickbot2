@@ -9,6 +9,10 @@ use azalea::{ClientInformation, prelude::*};
 use clap::Parser;
 use tracing::{error, warn};
 
+use crate::commands::{CmdCtx, execute};
+
+mod commands;
+
 #[tokio::main]
 async fn main() -> AppExit {
     thread::spawn(deadlock_detection_thread);
@@ -68,6 +72,10 @@ struct Args {
     /// The address of the server to connect to.
     address: String,
 
+    #[arg(short = 'o', long)]
+    /// The username of the owner of the bot. If specified, the bot will only respond to commands from this user.
+    owner: Option<String>,
+
     #[arg(short = 'P', long, default_value_t = false)]
     /// Whether to show where the bot is pathfinding to by spamming the /particle command. Off by default.
     pathfinder_debug_particles: bool,
@@ -90,7 +98,6 @@ struct SwarmState {
 async fn handle(bot: Client, event: azalea::Event, state: State) {
     let swarm_state = bot.resource::<SwarmState>();
 
-    #[allow(clippy::single_match)]
     match event {
         azalea::Event::Init => {
             bot.set_client_information(ClientInformation {
@@ -104,15 +111,50 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
                     .insert(PathfinderDebugParticles);
             }
         }
+        azalea::Event::Chat(chat) => {
+            let (Some(username), content) = chat.split_sender_and_content() else {
+                return;
+            };
+
+            if let Some(owner) = &swarm_state.args.owner
+                && username != *owner
+            {
+                return;
+            }
+
+            let Some(command) = content.strip_prefix('!') else {
+                return;
+            };
+
+            execute(
+                command,
+                CmdCtx {
+                    bot: &bot,
+                    state: &state,
+                    chat: chat.clone(),
+                },
+            )
+            .await;
+        }
         _ => {}
     }
 }
 
 async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) {
-    #[allow(clippy::single_match)]
     match &event {
         SwarmEvent::Disconnect(account, _join_opts) => {
             warn!("bot got kicked! {}", account.username());
+        }
+        SwarmEvent::Chat(chat) => {
+            if chat.message().to_string() == "The particle was not visible for anybody"
+                || chat
+                    .message()
+                    .to_string()
+                    .contains("Displaying particle minecraft:dust")
+            {
+                return;
+            }
+            println!("{}", chat.message().to_ansi());
         }
         _ => {}
     }
