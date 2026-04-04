@@ -1,12 +1,15 @@
 [package]
 name = "lickbot2"
 version = "0.1.0"
+description = "skynet for block game"
 edition = "2024"
 
 [dependencies]
 azalea = { git = "https://github.com/azalea-rs/azalea", version = "0.16.0" }
+clap = { version = "4.6.0", features = ["derive"] }
 parking_lot = { version = "0.12.5", features = ["deadlock_detection"] }
 tokio = "1.51.0"
+tracing = "0.1.44"
 
 [profile.dev]
 opt-level = 1
