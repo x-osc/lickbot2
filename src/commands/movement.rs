@@ -59,3 +59,33 @@ pub async fn execute_goto(args: &[&str], ctx: CmdCtx<'_>) {
         }
     };
 }
+
+pub async fn execute_follow(args: &[&str], ctx: CmdCtx<'_>) {
+    match args {
+        [] => {
+            let Some(sender) = ctx.sender() else {
+                ctx.reply("Couldn't determine sender".to_string());
+                return;
+            };
+
+            ctx.reply("Following you");
+            ctx.state.following_entity.lock().replace(sender);
+        }
+        [name] => {
+            let Some(player) = ctx
+                .bot
+                .any_entity_by::<&GameProfileComponent, With<Player>>(
+                    |profile: &GameProfileComponent| profile.name == *name,
+                )
+            else {
+                ctx.reply(format!("Player {name} not found"));
+                return;
+            };
+
+            ctx.state.following_entity.lock().replace(player);
+        }
+        _ => {
+            ctx.reply("expected: !follow <player>");
+        }
+    }
+}

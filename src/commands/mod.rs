@@ -4,7 +4,7 @@ use azalea::entity::metadata::Player;
 use azalea::player::GameProfileComponent;
 use azalea::{Client, EntityRef};
 
-use crate::State;
+use crate::{State, stop_all};
 
 mod misc;
 mod movement;
@@ -48,10 +48,13 @@ pub async fn execute(input: &str, ctx: CmdCtx<'_>) {
         return;
     }
 
+    stop_all(ctx.bot, ctx.state).await;
+
     let (cmd, args) = tokenize(input);
 
     match cmd {
         "goto" => movement::execute_goto(&args, ctx).await,
+        "follow" => movement::execute_follow(&args, ctx).await,
         "stop" => misc::execute_stop(&args, ctx).await,
         other => ctx.reply(format!("Unknown command: {other}")),
     };

@@ -1,7 +1,6 @@
-use azalea::prelude::*;
-
 use crate::commands::CmdCtx;
+use crate::stop_all;
 
 pub async fn execute_stop(_args: &[&str], ctx: CmdCtx<'_>) {
-    ctx.bot.stop_pathfinding();
+    stop_all(ctx.bot, ctx.state).await;
 }

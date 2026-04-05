@@ -1,12 +1,16 @@
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
 use azalea::ecs::prelude::*;
+use azalea::pathfinder::PathfinderOpts;
 use azalea::pathfinder::debug::PathfinderDebugParticles;
 use azalea::pathfinder::execute::simulation::SimulationPathfinderExecutionPlugin;
+use azalea::pathfinder::goals::{Goal, RadiusGoal};
 use azalea::swarm::prelude::*;
-use azalea::{ClientInformation, prelude::*};
+use azalea::{ClientInformation, EntityRef, prelude::*};
 use clap::Parser;
+use parking_lot::Mutex;
 use tracing::{error, warn};
 
 use crate::commands::{CmdCtx, execute};
@@ -61,32 +65,16 @@ fn deadlock_detection_thread() {
     }
 }
 
-#[derive(Parser, Debug, Clone, Default)]
-#[command(version, about, long_about = None)]
-struct Args {
-    #[arg(short, long, num_args = 1.., default_values = ["lickbot"])]
-    /// Usernames or emails of the accounts to use, space separated. If it contains an '@', it will be treated as a Microsoft account, otherwise it will be treated as an offline account.
-    accounts: Vec<String>,
-
-    #[arg(short = 'A', long, default_value = "localhost:25565")]
-    /// The address of the server to connect to.
-    address: String,
-
-    #[arg(short = 'o', long)]
-    /// The username of the owner of the bot. If specified, the bot will only respond to commands from this user.
-    owner: Option<String>,
-
-    #[arg(short = 'P', long, default_value_t = false)]
-    /// Whether to show where the bot is pathfinding to by spamming the /particle command. Off by default.
-    pathfinder_debug_particles: bool,
-}
-
 #[derive(Clone, Component, Default)]
-struct State {}
+pub struct State {
+    pub following_entity: Arc<Mutex<Option<EntityRef>>>,
+}
 
 impl State {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            following_entity: Default::default(),
+        }
     }
 }
 
@@ -136,6 +124,28 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
             )
             .await;
         }
+        azalea::Event::Tick => {
+            // TODO: turn following into plugin
+            #[allow(clippy::collapsible_match)]
+            #[allow(clippy::collapsible_if)]
+            if bot.ticks_connected().is_multiple_of(5) {
+                if let Some(following_entity) = &*state.following_entity.lock()
+                    && following_entity.is_alive()
+                {
+                    let goal = RadiusGoal::new(following_entity.position(), 3.);
+                    if (!bot.is_calculating_path() && !goal.success(bot.position().into()))
+                        || bot.is_executing_path()
+                    {
+                        bot.start_goto_with_opts(
+                            goal,
+                            PathfinderOpts::new().retry_on_no_path(false),
+                        );
+                    } else {
+                        following_entity.look_at();
+                    }
+                }
+            }
+        }
         _ => {}
     }
 }
@@ -158,4 +168,30 @@ async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) {
         }
         _ => {}
     }
+}
+
+async fn stop_all(bot: &Client, state: &State) {
+    bot.stop_pathfinding();
+    *state.following_entity.lock() = None;
+    bot.wait_updates(1).await;
+}
+
+#[derive(Parser, Debug, Clone, Default)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, num_args = 1.., default_values = ["lickbot"])]
+    /// Usernames or emails of the accounts to use, space separated. If it contains an '@', it will be treated as a Microsoft account, otherwise it will be treated as an offline account.
+    accounts: Vec<String>,
+
+    #[arg(short = 'A', long, default_value = "localhost:25565")]
+    /// The address of the server to connect to.
+    address: String,
+
+    #[arg(short = 'o', long)]
+    /// The username of the owner of the bot. If specified, the bot will only respond to commands from this user.
+    owner: Option<String>,
+
+    #[arg(short = 'P', long, default_value_t = false)]
+    /// Whether to show where the bot is pathfinding to by spamming the /particle command. Off by default.
+    pathfinder_debug_particles: bool,
 }
