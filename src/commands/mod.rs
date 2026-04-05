@@ -2,12 +2,14 @@ use azalea::client_chat::ChatPacket;
 use azalea::ecs::query::With;
 use azalea::entity::metadata::Player;
 use azalea::player::GameProfileComponent;
+use azalea::prelude::PathfinderClientExt;
 use azalea::{Client, EntityRef};
 
-use crate::{State, stop_all};
+use crate::State;
 
 mod misc;
 mod movement;
+mod pvp;
 
 pub struct CmdCtx<'a> {
     pub bot: &'a Client,
@@ -55,7 +57,15 @@ pub async fn execute(input: &str, ctx: CmdCtx<'_>) {
     match cmd {
         "goto" => movement::execute_goto(&args, ctx).await,
         "follow" => movement::execute_follow(&args, ctx).await,
+        "pvp" => pvp::execute_pvp(&args, ctx).await,
         "stop" => misc::execute_stop(&args, ctx).await,
         other => ctx.reply(format!("Unknown command: {other}")),
     };
+}
+
+async fn stop_all(bot: &Client, state: &State) {
+    bot.stop_pathfinding();
+    *state.following_entity.lock() = None;
+    *state.pvp_target.lock() = None;
+    bot.wait_updates(1).await;
 }

@@ -5,7 +5,8 @@ description = "skynet for block game"
 edition = "2024"
 
 [dependencies]
-azalea = { git = "https://github.com/azalea-rs/azalea", version = "0.16.0" }
+# azalea = { path = "../azalea/azalea", version = "0.16.0" }
+azalea = { git = "https://github.com/x-osc/azalea", version = "0.16.0", branch = "dev" }
 clap = { version = "4.6.0", features = ["derive"] }
 parking_lot = { version = "0.12.5", features = ["deadlock_detection"] }
 tokio = "1.51.0"

@@ -14,8 +14,10 @@ use parking_lot::Mutex;
 use tracing::{error, warn};
 
 use crate::commands::{CmdCtx, execute};
+use crate::pvp::pvp_tick;
 
 mod commands;
+mod pvp;
 
 #[tokio::main]
 async fn main() -> AppExit {
@@ -68,12 +70,14 @@ fn deadlock_detection_thread() {
 #[derive(Clone, Component, Default)]
 pub struct State {
     pub following_entity: Arc<Mutex<Option<EntityRef>>>,
+    pub pvp_target: Arc<Mutex<Option<EntityRef>>>,
 }
 
 impl State {
     pub fn new() -> Self {
         Self {
             following_entity: Default::default(),
+            pvp_target: Default::default(),
         }
     }
 }
@@ -125,28 +129,29 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
             .await;
         }
         azalea::Event::Tick => {
-            // TODO: turn following into plugin
-            #[allow(clippy::collapsible_match)]
-            #[allow(clippy::collapsible_if)]
-            if bot.ticks_connected().is_multiple_of(5) {
-                if let Some(following_entity) = &*state.following_entity.lock()
-                    && following_entity.is_alive()
-                {
-                    let goal = RadiusGoal::new(following_entity.position(), 3.);
-                    if (!bot.is_calculating_path() && !goal.success(bot.position().into()))
-                        || bot.is_executing_path()
-                    {
-                        bot.start_goto_with_opts(
-                            goal,
-                            PathfinderOpts::new().retry_on_no_path(false),
-                        );
-                    } else {
-                        following_entity.look_at();
-                    }
-                }
-            }
+            follow_tick(&bot, &state);
+            pvp_tick(&bot, &state);
         }
         _ => {}
+    }
+}
+
+fn follow_tick(bot: &Client, state: &State) {
+    // TODO: turn following into plugin
+    #[allow(clippy::collapsible_if)]
+    if bot.ticks_connected().is_multiple_of(5) {
+        if let Some(following_entity) = state.following_entity.lock().as_ref()
+            && following_entity.is_alive()
+        {
+            let goal = RadiusGoal::new(following_entity.position(), 3.);
+            if (!bot.is_calculating_path() && !goal.success(bot.position().into()))
+                || bot.is_executing_path()
+            {
+                bot.start_goto_with_opts(goal, PathfinderOpts::new().retry_on_no_path(false));
+            } else {
+                following_entity.look_at();
+            }
+        }
     }
 }
 
@@ -168,12 +173,6 @@ async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) {
         }
         _ => {}
     }
-}
-
-async fn stop_all(bot: &Client, state: &State) {
-    bot.stop_pathfinding();
-    *state.following_entity.lock() = None;
-    bot.wait_updates(1).await;
 }
 
 #[derive(Parser, Debug, Clone, Default)]
