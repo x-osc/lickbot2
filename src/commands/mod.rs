@@ -6,6 +6,7 @@ use azalea::{Client, EntityRef};
 
 use crate::State;
 
+mod misc;
 mod movement;
 
 pub struct CmdCtx<'a> {
@@ -51,6 +52,7 @@ pub async fn execute(input: &str, ctx: CmdCtx<'_>) {
 
     match cmd {
         "goto" => movement::execute_goto(&args, ctx).await,
+        "stop" => misc::execute_stop(&args, ctx).await,
         other => ctx.reply(format!("Unknown command: {other}")),
     };
 }
