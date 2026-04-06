@@ -1,7 +1,7 @@
 [package]
 name = "lickbot2"
 version = "0.1.0"
-description = "skynet for block game"
+description = "sky net for block game"
 edition = "2024"
 
 [dependencies]
