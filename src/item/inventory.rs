@@ -1,4 +1,5 @@
 use azalea::{
+    container::ContainerHandle,
     inventory::{Menu, operations::SwapClick},
     prelude::*,
     registry::builtin::ItemKind,
@@ -12,23 +13,17 @@ const SHOVEL_HOTBAR_INDEX: usize = 3;
 const HOE_HOTBAR_INDEX: usize = 4;
 
 pub fn sort_hotbar(bot: &Client) {
-    // dont open the inventory if unnecessary
-    if !needs_to_sort_hotbar(bot) {
-        return;
-    }
-
     let inventory_menu = bot.menu();
-    let Some(inventory_ref) = bot.open_inventory() else {
-        warn!("bot tried to open inventory while another container was open");
-        return;
-    };
-
+    let mut lazyinv = LazyInventory::new(bot);
     let hotbar_start = *inventory_menu.hotbar_slots_range().start();
 
     if let Some((best_slot, best_kind)) = best_axe(&inventory_menu)
         && best_slot != hotbar_start + AXE_HOTBAR_INDEX
     {
         info!("Swapping {best_kind} to slot {AXE_HOTBAR_INDEX}");
+        let Some(inventory_ref) = lazyinv.get() else {
+            return;
+        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             // target slot is hotbar relative this isnt a mistake lmao
@@ -39,6 +34,9 @@ pub fn sort_hotbar(bot: &Client) {
         && best_slot != hotbar_start + SWORD_HOTBAR_INDEX
     {
         info!("Swapping {best_kind} to slot {SWORD_HOTBAR_INDEX}");
+        let Some(inventory_ref) = lazyinv.get() else {
+            return;
+        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             target_slot: SWORD_HOTBAR_INDEX as u8,
@@ -48,6 +46,9 @@ pub fn sort_hotbar(bot: &Client) {
         && best_slot != hotbar_start + PICKAXE_HOTBAR_INDEX
     {
         info!("Swapping {best_kind} to slot {PICKAXE_HOTBAR_INDEX}");
+        let Some(inventory_ref) = lazyinv.get() else {
+            return;
+        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             target_slot: PICKAXE_HOTBAR_INDEX as u8,
@@ -57,6 +58,9 @@ pub fn sort_hotbar(bot: &Client) {
         && best_slot != hotbar_start + SHOVEL_HOTBAR_INDEX
     {
         info!("Swapping {best_kind} to slot {SHOVEL_HOTBAR_INDEX}");
+        let Some(inventory_ref) = lazyinv.get() else {
+            return;
+        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             target_slot: SHOVEL_HOTBAR_INDEX as u8,
@@ -66,6 +70,9 @@ pub fn sort_hotbar(bot: &Client) {
         && best_slot != hotbar_start + HOE_HOTBAR_INDEX
     {
         info!("Swapping {best_kind} to slot {HOE_HOTBAR_INDEX}");
+        let Some(inventory_ref) = lazyinv.get() else {
+            return;
+        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             target_slot: HOE_HOTBAR_INDEX as u8,
@@ -73,37 +80,33 @@ pub fn sort_hotbar(bot: &Client) {
     }
 }
 
-pub fn needs_to_sort_hotbar(bot: &Client) -> bool {
-    let inventory_menu = bot.menu();
+/// only opens inventory if necessary
+struct LazyInventory<'a> {
+    bot: &'a Client,
+    inventory_ref: Option<ContainerHandle>,
+}
 
-    let hotbar_start = *inventory_menu.hotbar_slots_range().start();
+impl<'a> LazyInventory<'a> {
+    fn new(bot: &'a Client) -> Self {
+        Self {
+            bot,
+            inventory_ref: None,
+        }
+    }
 
-    if let Some((best_slot, _)) = best_axe(&inventory_menu)
-        && best_slot != hotbar_start + AXE_HOTBAR_INDEX
-    {
-        return true;
+    fn get(&mut self) -> Option<&ContainerHandle> {
+        println!("aaaa");
+        if self.inventory_ref.is_none() {
+            match self.bot.open_inventory() {
+                Some(r) => self.inventory_ref = Some(r),
+                None => {
+                    warn!("bot tried to open inventory while another container was open");
+                    return None;
+                }
+            }
+        }
+        self.inventory_ref.as_ref()
     }
-    if let Some((best_slot, _)) = best_sword(&inventory_menu)
-        && best_slot != hotbar_start + SWORD_HOTBAR_INDEX
-    {
-        return true;
-    }
-    if let Some((best_slot, _)) = best_pickaxe(&inventory_menu)
-        && best_slot != hotbar_start + PICKAXE_HOTBAR_INDEX
-    {
-        return true;
-    }
-    if let Some((best_slot, _)) = best_shovel(&inventory_menu)
-        && best_slot != hotbar_start + SHOVEL_HOTBAR_INDEX
-    {
-        return true;
-    }
-    if let Some((best_slot, _)) = best_hoe(&inventory_menu)
-        && best_slot != hotbar_start + HOE_HOTBAR_INDEX
-    {
-        return true;
-    }
-    return false;
 }
 
 const AXE_ORDER: [ItemKind; 7] = [
