@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::thread;
 use std::time::Duration;
 
@@ -11,7 +11,8 @@ use azalea::swarm::prelude::*;
 use azalea::{ClientInformation, EntityRef, prelude::*};
 use clap::Parser;
 use parking_lot::Mutex;
-use tracing::{error, warn};
+use shadow_rs::shadow;
+use tracing::{debug, error, info, warn};
 
 use crate::commands::{CmdCtx, execute};
 use crate::pvp::pvp_tick;
@@ -20,17 +21,24 @@ mod commands;
 mod item;
 mod pvp;
 
+shadow!(build);
+
 #[tokio::main]
 async fn main() -> AppExit {
     thread::spawn(deadlock_detection_thread);
 
     let args = Args::parse();
+
     let join_address = args.address.clone();
 
     let mut builder = SwarmBuilder::new()
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .add_plugins(SimulationPathfinderExecutionPlugin);
+
+    // TODO: fix logging before plugins are added
+    info!("Starting {}", short_version());
+    debug!("{}", version());
 
     for username_or_email in &args.accounts {
         let account = if username_or_email.contains('@') {
@@ -176,8 +184,50 @@ async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) {
     }
 }
 
+fn short_version() -> &'static str {
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION.get_or_init(|| {
+        format!(
+            "{name} v{version}",
+            name = build::PROJECT_NAME,
+            version = build::PKG_VERSION
+        )
+    })
+}
+
+fn version() -> &'static str {
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION.get_or_init(|| {
+        format!(
+            "{name} v{version}\n\n{git}{dirty} on {branch},\ncompiled @ {time}\nwith {rust}",
+            name = build::PROJECT_NAME,
+            version = build::PKG_VERSION,
+            git = build::SHORT_COMMIT,
+            dirty = if build::GIT_CLEAN { "" } else { "+" },
+            branch = build::BRANCH,
+            time = build::BUILD_TIME,
+            rust = build::RUST_VERSION
+        )
+    })
+}
+
+fn version_clap() -> &'static str {
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION.get_or_init(|| {
+        format!(
+            "v{version}\n\n{git}{dirty} on {branch},\ncompiled @ {time}\nwith {rust}",
+            version = build::PKG_VERSION,
+            git = build::SHORT_COMMIT,
+            dirty = if build::GIT_CLEAN { "" } else { "+" },
+            branch = build::BRANCH,
+            time = build::BUILD_TIME,
+            rust = build::RUST_VERSION
+        )
+    })
+}
+
 #[derive(Parser, Debug, Clone, Default)]
-#[command(version, about, long_about = None)]
+#[command(version = version_clap(), about, long_about = None)]
 struct Args {
     #[arg(short, long, num_args = 1.., default_values = ["lickbot"])]
     /// Usernames or emails of the accounts to use, space separated. If it contains an '@', it will be treated as a Microsoft account, otherwise it will be treated as an offline account.
@@ -191,7 +241,7 @@ struct Args {
     /// The username of the owner of the bot. If specified, the bot will only respond to commands from this user.
     owner: Option<String>,
 
-    #[arg(short = 'P', long, default_value_t = false)]
-    /// Whether to show where the bot is pathfinding to by spamming the /particle command. Off by default.
+    #[arg(short = 'P', long)]
+    /// Show where the bot is pathfinding to by spamming the /particle command.
     pathfinder_debug_particles: bool,
 }

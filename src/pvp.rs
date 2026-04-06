@@ -1,5 +1,5 @@
 use azalea::prelude::*;
-use tracing::{info, trace};
+use tracing::{debug, info};
 
 use crate::{
     State,
@@ -34,7 +34,7 @@ pub fn pvp_tick(bot: &Client, state: &State) {
         return;
     }
 
-    trace!("Attacking entity {}", target.id());
+    debug!("Attacking entity {}", target.id());
 
     let target_pos = target.position();
     if bot.eye_position().distance_to(target_pos) < 4. {
