@@ -17,6 +17,7 @@ use crate::commands::{CmdCtx, execute};
 use crate::pvp::pvp_tick;
 
 mod commands;
+mod item;
 mod pvp;
 
 #[tokio::main]
