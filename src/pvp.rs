@@ -1,5 +1,5 @@
 use azalea::prelude::*;
-use tracing::{debug, info};
+use tracing::{debug, trace};
 
 use crate::{
     State,
@@ -21,7 +21,7 @@ pub fn pvp_tick(bot: &Client, state: &State) {
 
         let best_slot = best_weapon_in_hotbar(&bot.menu());
         if best_slot as u8 != bot.selected_hotbar_slot() {
-            info!(
+            debug!(
                 "Selecting weapon {} at slot {}",
                 bot.menu().slots()[bot.menu().hotbar_slots_range()][best_slot].kind(),
                 best_slot
@@ -34,7 +34,7 @@ pub fn pvp_tick(bot: &Client, state: &State) {
         return;
     }
 
-    debug!("Attacking entity {}", target.id());
+    trace!("Attacking entity {}", target.id());
 
     let target_pos = target.position();
     if bot.eye_position().distance_to(target_pos) < 4. {

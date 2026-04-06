@@ -20,7 +20,7 @@ pub fn sort_hotbar(bot: &Client) {
     if let Some((best_slot, best_kind)) = best_axe(&inventory_menu)
         && best_slot != hotbar_start + AXE_HOTBAR_INDEX
     {
-        info!("Swapping {best_kind} to slot {AXE_HOTBAR_INDEX}");
+        info!("Swapping {best_kind} at {best_slot} to slot {AXE_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -33,7 +33,7 @@ pub fn sort_hotbar(bot: &Client) {
     if let Some((best_slot, best_kind)) = best_sword(&inventory_menu)
         && best_slot != hotbar_start + SWORD_HOTBAR_INDEX
     {
-        info!("Swapping {best_kind} to slot {SWORD_HOTBAR_INDEX}");
+        info!("Swapping {best_kind} at {best_slot} to slot {SWORD_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -45,7 +45,7 @@ pub fn sort_hotbar(bot: &Client) {
     if let Some((best_slot, best_kind)) = best_pickaxe(&inventory_menu)
         && best_slot != hotbar_start + PICKAXE_HOTBAR_INDEX
     {
-        info!("Swapping {best_kind} to slot {PICKAXE_HOTBAR_INDEX}");
+        info!("Swapping {best_kind} at {best_slot} to slot {PICKAXE_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -57,7 +57,7 @@ pub fn sort_hotbar(bot: &Client) {
     if let Some((best_slot, best_kind)) = best_shovel(&inventory_menu)
         && best_slot != hotbar_start + SHOVEL_HOTBAR_INDEX
     {
-        info!("Swapping {best_kind} to slot {SHOVEL_HOTBAR_INDEX}");
+        info!("Swapping {best_kind} at {best_slot} to slot {SHOVEL_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -69,7 +69,7 @@ pub fn sort_hotbar(bot: &Client) {
     if let Some((best_slot, best_kind)) = best_hoe(&inventory_menu)
         && best_slot != hotbar_start + HOE_HOTBAR_INDEX
     {
-        info!("Swapping {best_kind} to slot {HOE_HOTBAR_INDEX}");
+        info!("Swapping {best_kind} at {best_slot} to slot {HOE_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -94,8 +94,10 @@ impl<'a> LazyInventory<'a> {
         }
     }
 
+    /// returns a reference to the currently open inventory, opening it if necessary
+    ///
+    /// Returns none if another container is already open.
     fn get(&mut self) -> Option<&ContainerHandle> {
-        println!("aaaa");
         if self.inventory_ref.is_none() {
             match self.bot.open_inventory() {
                 Some(r) => self.inventory_ref = Some(r),

@@ -12,7 +12,7 @@ use azalea::{ClientInformation, EntityRef, prelude::*};
 use clap::Parser;
 use parking_lot::Mutex;
 use shadow_rs::shadow;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::commands::{CmdCtx, execute};
 use crate::pvp::pvp_tick;
@@ -29,16 +29,37 @@ async fn main() -> AppExit {
 
     let args = Args::parse();
 
-    let join_address = args.address.clone();
+    let filter = if (args.verbose) != 0 {
+        get_rust_log(args.verbose as i8).to_owned()
+    } else {
+        std::env::var("RUST_LOG")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| get_rust_log(0).to_owned())
+    };
+
+    let fmt_subscriber = tracing_subscriber::fmt().with_env_filter(filter).finish();
+    tracing::subscriber::set_global_default(fmt_subscriber).unwrap();
+
+    info!("starting {}", short_version());
+    debug!("{}", single_line_version());
+
+    let join_address = args.server.clone();
 
     let mut builder = SwarmBuilder::new()
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .add_plugins(SimulationPathfinderExecutionPlugin);
 
-    // TODO: fix logging before plugins are added
-    info!("Starting {}", short_version());
-    debug!("{}", version());
+    info!(
+        "joining {} with accounts [ {} ]",
+        args.server,
+        args.accounts
+            .iter()
+            .map(|s| format!("\"{}\"", s))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     for username_or_email in &args.accounts {
         let account = if username_or_email.contains('@') {
@@ -106,11 +127,15 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
                 ..Default::default()
             });
             if swarm_state.args.pathfinder_debug_particles {
+                debug!("pathfinder_debug_particles are enabled");
                 bot.ecs
                     .write()
                     .entity_mut(bot.entity)
                     .insert(PathfinderDebugParticles);
             }
+        }
+        azalea::Event::Spawn => {
+            info!("{} has logged in", bot.username())
         }
         azalea::Event::Chat(chat) => {
             let (Some(username), content) = chat.split_sender_and_content() else {
@@ -141,6 +166,10 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
             follow_tick(&bot, &state);
             pvp_tick(&bot, &state);
         }
+        azalea::Event::Death(death) => {
+            info!("{} has died!", bot.username());
+            debug!("reason: {:?}", death);
+        }
         _ => {}
     }
 }
@@ -156,6 +185,7 @@ fn follow_tick(bot: &Client, state: &State) {
             if (!bot.is_calculating_path() && !goal.success(bot.position().into()))
                 || bot.is_executing_path()
             {
+                trace!("setting new follow goal: {:?}", goal);
                 bot.start_goto_with_opts(goal, PathfinderOpts::new().retry_on_no_path(false));
             } else {
                 following_entity.look_at();
@@ -164,13 +194,16 @@ fn follow_tick(bot: &Client, state: &State) {
     }
 }
 
-async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) {
+async fn swarm_handle(_swarm: Swarm, event: SwarmEvent, _state: SwarmState) {
     match &event {
         SwarmEvent::Disconnect(account, _join_opts) => {
-            warn!("bot got kicked! {}", account.username());
+            warn!("{} got disconnected!", account.username());
         }
         SwarmEvent::Chat(chat) => {
-            if chat.message().to_string() == "The particle was not visible for anybody"
+            if chat
+                .message()
+                .to_string()
+                .contains("The particle was not visible for anybody")
                 || chat
                     .message()
                     .to_string()
@@ -195,11 +228,11 @@ fn short_version() -> &'static str {
     })
 }
 
-fn version() -> &'static str {
+fn single_line_version() -> &'static str {
     static VERSION: OnceLock<String> = OnceLock::new();
     VERSION.get_or_init(|| {
         format!(
-            "{name} v{version}\n\n{git}{dirty} on {branch},\ncompiled @ {time}\nwith {rust}",
+            "{name} v{version} ({git}{dirty} on {branch} @ {time} with {rust})",
             name = build::PROJECT_NAME,
             version = build::PKG_VERSION,
             git = build::SHORT_COMMIT,
@@ -226,16 +259,28 @@ fn version_clap() -> &'static str {
     })
 }
 
+fn get_rust_log(verbosity: i8) -> &'static str {
+    match verbosity {
+        ..=-2 => "error,lickbot2=error",
+        -1 => "warn,lickbot2=warn",
+        0 => "warn,lickbot2=info",
+        1 => "warn,lickbot2=debug",
+        2 => "info,lickbot2=debug",
+        3 => "debug,lickbot2=trace",
+        4.. => "trace,lickbot2=trace",
+    }
+}
+
 #[derive(Parser, Debug, Clone, Default)]
 #[command(version = version_clap(), about, long_about = None)]
 struct Args {
-    #[arg(short, long, num_args = 1.., default_values = ["lickbot"])]
+    #[arg(short = 'a', long, num_args = 1.., default_values = ["lickbot"])]
     /// Usernames or emails of the accounts to use, space separated. If it contains an '@', it will be treated as a Microsoft account, otherwise it will be treated as an offline account.
     accounts: Vec<String>,
 
-    #[arg(short = 'A', long, default_value = "localhost:25565")]
+    #[arg(short = 's', long, default_value = "localhost:25565")]
     /// The address of the server to connect to.
-    address: String,
+    server: String,
 
     #[arg(short = 'o', long)]
     /// The username of the owner of the bot. If specified, the bot will only respond to commands from this user.
@@ -244,4 +289,8 @@ struct Args {
     #[arg(short = 'P', long)]
     /// Show where the bot is pathfinding to by spamming the /particle command.
     pathfinder_debug_particles: bool,
+
+    #[arg(short = 'v', long, action = clap::ArgAction::Count)]
+    /// Increase logging verbosity
+    verbose: u8,
 }

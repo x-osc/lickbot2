@@ -6,13 +6,14 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
-# azalea = { path = "../azalea/azalea", version = "*" }
-azalea = { git = "https://github.com/x-osc/azalea", version = "*", branch = "dev" }
+# azalea = { path = "../azalea/azalea", version = "*", default-features = false, features = ["serde", "packet-event", "online-mode"] }
+azalea = { git = "https://github.com/x-osc/azalea", branch = "dev", version = "*", default-features = false, features = ["serde", "packet-event", "online-mode"] }
 clap = { version = "4.6.0", features = ["derive"] }
 parking_lot = { version = "0.12.5", features = ["deadlock_detection"] }
 shadow-rs = { version = "1.7.1", default-features = false }
 tokio = "1.51.0"
 tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
 [build-dependencies]
 shadow-rs = "1.7.1"

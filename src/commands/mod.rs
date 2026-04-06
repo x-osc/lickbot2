@@ -4,6 +4,7 @@ use azalea::entity::metadata::Player;
 use azalea::player::GameProfileComponent;
 use azalea::prelude::PathfinderClientExt;
 use azalea::{Client, EntityRef};
+use tracing::{debug, info};
 
 use crate::State;
 
@@ -19,6 +20,12 @@ pub struct CmdCtx<'a> {
 
 impl CmdCtx<'_> {
     pub fn reply(&self, message: impl Into<String>) {
+        let message = message.into();
+        info!("{}: {}", self.bot.username(), message);
+        self.reply_no_log(message);
+    }
+
+    pub fn reply_no_log(&self, message: impl Into<String>) {
         self.bot.chat(message);
     }
 
@@ -53,6 +60,8 @@ pub async fn execute(input: &str, ctx: CmdCtx<'_>) {
     stop_all(ctx.bot, ctx.state).await;
 
     let (cmd, args) = tokenize(input);
+
+    debug!("recieved command {cmd} with args {args:?}");
 
     match cmd {
         "goto" => movement::execute_goto(&args, ctx).await,
