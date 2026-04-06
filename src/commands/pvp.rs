@@ -14,6 +14,7 @@ pub async fn execute_pvp(args: &[&str], ctx: CmdCtx<'_>) {
 
             ctx.reply("Attacking you");
 
+            ctx.state.following_entity.lock().replace(sender.clone());
             ctx.state.pvp_target.lock().replace(sender);
         }
         [name] => {
@@ -29,6 +30,7 @@ pub async fn execute_pvp(args: &[&str], ctx: CmdCtx<'_>) {
 
             ctx.reply(format!("Attacking {name}"));
 
+            ctx.state.following_entity.lock().replace(player.clone());
             ctx.state.pvp_target.lock().replace(player);
         }
         _ => {
