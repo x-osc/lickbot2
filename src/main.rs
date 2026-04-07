@@ -8,7 +8,8 @@ use azalea::pathfinder::debug::PathfinderDebugParticles;
 use azalea::pathfinder::execute::simulation::SimulationPathfinderExecutionPlugin;
 use azalea::pathfinder::goals::{Goal, RadiusGoal};
 use azalea::swarm::prelude::*;
-use azalea::{ClientInformation, EntityRef, prelude::*};
+use azalea::{ClientInformation, EntityRef, prelude::*, protocol};
+use azalea_viaversion::ViaVersionPlugin;
 use clap::Parser;
 use parking_lot::Mutex;
 use shadow_rs::shadow;
@@ -50,6 +51,11 @@ async fn main() -> AppExit {
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .add_plugins(SimulationPathfinderExecutionPlugin);
+
+    if args.mc_version != protocol::packets::VERSION_NAME {
+        info!("starting viaproxy for version {}...", args.mc_version);
+        builder = builder.add_plugins(ViaVersionPlugin::start(&args.mc_version).await);
+    }
 
     info!(
         "joining {} with accounts [ {} ]",
@@ -289,6 +295,10 @@ struct Args {
     #[arg(short = 'o', long)]
     /// The username of the owner of the bot. If specified, the bot will only respond to commands from this user.
     owner: Option<String>,
+
+    #[arg(short = 'm', long, default_value = azalea::protocol::packets::VERSION_NAME)]
+    /// Minecraft version
+    mc_version: String,
 
     #[arg(short = 'P', long)]
     /// Show where the bot is pathfinding to by spamming the /particle command.
