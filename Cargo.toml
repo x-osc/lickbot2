@@ -2,6 +2,7 @@
 name = "lickbot2"
 version = "0.1.0"
 description = "sky net for block game"
+license = "MIT"
 edition = "2024"
 build = "build.rs"
 
