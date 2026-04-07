@@ -16,7 +16,7 @@ pub fn pvp_tick(bot: &Client, state: &State) {
         return;
     }
 
-    if bot.ticks_connected().is_multiple_of(20) {
+    if bot.ticks_connected().is_multiple_of(20) && !bot.is_mining() {
         sort_hotbar(bot);
 
         let best_slot = best_weapon_in_hotbar(&bot.menu());
