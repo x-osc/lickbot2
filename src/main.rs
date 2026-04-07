@@ -49,8 +49,12 @@ async fn main() -> AppExit {
 
     let mut builder = SwarmBuilder::new()
         .set_handler(handle)
-        .set_swarm_handler(swarm_handle)
-        .add_plugins(SimulationPathfinderExecutionPlugin);
+        .set_swarm_handler(swarm_handle);
+
+    if !args.disable_simulation_patfinder {
+        debug!("simulation pathfinder is enabled");
+        builder = builder.add_plugins(SimulationPathfinderExecutionPlugin);
+    }
 
     if args.mc_version != protocol::packets::VERSION_NAME {
         info!("starting viaproxy for version {}...", args.mc_version);
@@ -282,13 +286,13 @@ fn get_rust_log(verbosity: i8) -> &'static str {
 }
 
 #[derive(Parser, Debug, Clone, Default)]
-#[command(version = version_clap(), about, long_about = None)]
+#[command(version = version_clap(), about, long_about = None, next_line_help = true, max_term_width = 150)]
 struct Args {
-    #[arg(short = 'a', long, num_args = 1.., default_values = ["lickbot"])]
-    /// Usernames or emails of the accounts to use, space separated. If it contains an '@', it will be treated as a Microsoft account, otherwise it will be treated as an offline account.
+    #[arg(short = 'a', long, num_args = 1.., required = true)]
+    /// Usernames or emails of the accounts to use, space separated. If it is an email, it will be treated as a Microsoft account, otherwise treated as an offline account.
     accounts: Vec<String>,
 
-    #[arg(short = 's', long, default_value = "localhost:25565")]
+    #[arg(short = 's', long, required = true)]
     /// The address of the server to connect to.
     server: String,
 
@@ -296,9 +300,13 @@ struct Args {
     /// The username of the owner of the bot. If specified, the bot will only respond to commands from this user.
     owner: Option<String>,
 
-    #[arg(short = 'm', long, default_value = azalea::protocol::packets::VERSION_NAME)]
-    /// Minecraft version
+    #[arg(short = 'm', long, default_value = protocol::packets::VERSION_NAME)]
+    /// Target minecraft version
     mc_version: String,
+
+    #[arg(short = 'S', long)]
+    /// Disable the pathfinder's postprocessor which smooths the path to make it more realistic.
+    disable_simulation_patfinder: bool,
 
     #[arg(short = 'P', long)]
     /// Show where the bot is pathfinding to by spamming the /particle command.
