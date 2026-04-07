@@ -157,7 +157,7 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
                 CmdCtx {
                     bot: &bot,
                     state: &state,
-                    chat: chat.clone(),
+                    chat: chat,
                 },
             )
             .await;
@@ -167,6 +167,10 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
             pvp_tick(&bot, &state);
         }
         azalea::Event::Death(death) => {
+            // TODO: why dis happen + fix lib
+            let Some(death) = death else {
+                return;
+            };
             info!("{} has died!", bot.username());
             debug!("reason: {:?}", death);
         }

@@ -66,8 +66,18 @@ pub async fn execute(input: &str, ctx: CmdCtx<'_>) {
     match cmd {
         "goto" => movement::execute_goto(&args, ctx).await,
         "follow" => movement::execute_follow(&args, ctx).await,
+
         "pvp" => pvp::execute_pvp(&args, ctx).await,
+
         "stop" => misc::execute_stop(&args, ctx).await,
+        "disconnect" => misc::execute_disconnect(&args, ctx).await,
+        "health" => misc::execute_health(&args, ctx).await,
+        "hunger" => misc::execute_hunger(&args, ctx).await,
+        "pos" => misc::execute_pos(&args, ctx).await,
+        "inventory" => misc::execute_inventory(&args, ctx).await,
+        "players" => misc::execute_players(&args, ctx).await,
+        "pathfinderstate" => misc::execute_pathfinderstate(&args, ctx).await,
+        "pathfindermoves" => misc::execute_pathfindermoves(&args, ctx).await,
         other => ctx.reply(format!("Unknown command: {other}")),
     };
 }
