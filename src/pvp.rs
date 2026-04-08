@@ -36,12 +36,15 @@ pub fn pvp_tick(bot: &Client, state: &State) {
 
     trace!("Attacking entity {}", target.id());
 
-    let target_pos = target.position();
-    if bot.eye_position().distance_to(target_pos) < 4. {
+    if bot.eye_position().distance_to(target.position()) < 4.5
+        || bot.eye_position().distance_to(target.eye_position()) < 4.5
+    {
         target.look_at();
     }
 
-    if bot.eye_position().distance_to(target_pos) < 3. {
+    if bot.eye_position().distance_to(target.position()) < 3.
+        || bot.eye_position().distance_to(target.eye_position()) < 3.
+    {
         target.attack();
     }
 }

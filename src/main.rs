@@ -8,7 +8,7 @@ use azalea::pathfinder::debug::PathfinderDebugParticles;
 use azalea::pathfinder::execute::simulation::SimulationPathfinderExecutionPlugin;
 use azalea::pathfinder::goals::{Goal, RadiusGoal};
 use azalea::swarm::prelude::*;
-use azalea::{ClientInformation, EntityRef, prelude::*, protocol};
+use azalea::{ClientInformation, EntityRef, Vec3, prelude::*, protocol};
 use azalea_viaversion::ViaVersionPlugin;
 use clap::Parser;
 use parking_lot::Mutex;
@@ -109,15 +109,28 @@ fn deadlock_detection_thread() {
 
 #[derive(Clone, Component, Default)]
 pub struct State {
-    pub following_entity: Arc<Mutex<Option<EntityRef>>>,
+    pub following_data: Arc<Mutex<Option<FollowingData>>>,
     pub pvp_target: Arc<Mutex<Option<EntityRef>>>,
 }
 
 impl State {
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[derive(Clone)]
+pub struct FollowingData {
+    pub target: EntityRef,
+    pub old_pos: Vec3,
+}
+
+impl FollowingData {
+    pub fn new(target: EntityRef) -> Self {
+        let pos = target.position();
         Self {
-            following_entity: Default::default(),
-            pvp_target: Default::default(),
+            target,
+            old_pos: pos,
         }
     }
 }
@@ -190,22 +203,42 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
 
 fn follow_tick(bot: &Client, state: &State) {
     // TODO: turn following into plugin
-    #[allow(clippy::collapsible_if)]
-    if bot.ticks_connected().is_multiple_of(5) {
-        if let Some(following_entity) = state.following_entity.lock().as_ref()
-            && following_entity.is_alive()
-        {
-            let goal = RadiusGoal::new(following_entity.position(), 3.);
-            if (!bot.is_calculating_path() && !goal.success(bot.position().into()))
-                || bot.is_executing_path()
-            {
-                trace!("setting new follow goal: {:?}", goal);
-                bot.start_goto_with_opts(goal, PathfinderOpts::new().retry_on_no_path(false));
-            } else {
-                following_entity.look_at();
-            }
-        }
+    if !bot.ticks_connected().is_multiple_of(5) {
+        return;
     }
+    let Some(following_data) = &*state.following_data.lock() else {
+        return;
+    };
+    let target = &following_data.target;
+    if !target.is_alive() {
+        return;
+    }
+
+    let opts = PathfinderOpts::new().retry_on_no_path(false);
+    let goal = RadiusGoal::new(target.position(), 2.);
+    let old_pos = following_data.old_pos;
+
+    if goal.success(bot.position().into()) {
+        if bot.is_executing_path() {
+            bot.stop_pathfinding();
+        }
+
+        target.look_at();
+        return;
+    }
+
+    if target.position().distance_to(old_pos) > 3.0 {
+        trace!("target moved, setting new goal: {:?}", goal);
+        bot.start_goto_with_opts(goal, opts);
+        return;
+    }
+
+    if bot.is_calculating_path() || bot.is_executing_path() {
+        return;
+    }
+
+    trace!("setting new follow goal: {:?}", goal);
+    bot.start_goto_with_opts(goal, opts);
 }
 
 async fn swarm_handle(_swarm: Swarm, event: SwarmEvent, _state: SwarmState) {
@@ -279,7 +312,7 @@ fn get_rust_log(verbosity: i8) -> &'static str {
         -1 => "warn,lickbot2=warn",
         0 => "warn,lickbot2=info",
         1 => "warn,lickbot2=debug",
-        2 => "info,lickbot2=debug",
+        2 => "info,lickbot2=trace",
         3 => "debug,lickbot2=trace",
         4.. => "trace,lickbot2=trace",
     }

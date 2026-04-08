@@ -84,7 +84,7 @@ pub async fn execute(input: &str, ctx: CmdCtx<'_>) {
 
 async fn stop_all(bot: &Client, state: &State) {
     bot.stop_pathfinding();
-    *state.following_entity.lock() = None;
+    *state.following_data.lock() = None;
     *state.pvp_target.lock() = None;
     bot.wait_updates(1).await;
 }

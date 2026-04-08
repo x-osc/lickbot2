@@ -4,6 +4,7 @@ use azalea::pathfinder::goals::{BlockPosGoal, XZGoal, YGoal};
 use azalea::prelude::*;
 use azalea::{entity::metadata::Player, player::GameProfileComponent};
 
+use crate::FollowingData;
 use crate::commands::{CmdCtx, is_number};
 
 pub async fn execute_goto(args: &[&str], ctx: CmdCtx<'_>) {
@@ -69,7 +70,10 @@ pub async fn execute_follow(args: &[&str], ctx: CmdCtx<'_>) {
             };
 
             ctx.reply("Following you");
-            ctx.state.following_entity.lock().replace(sender);
+            ctx.state
+                .following_data
+                .lock()
+                .replace(FollowingData::new(sender));
         }
         [name] => {
             let Some(player) = ctx
@@ -82,7 +86,10 @@ pub async fn execute_follow(args: &[&str], ctx: CmdCtx<'_>) {
                 return;
             };
 
-            ctx.state.following_entity.lock().replace(player);
+            ctx.state
+                .following_data
+                .lock()
+                .replace(FollowingData::new(player));
         }
         _ => {
             ctx.reply("expected: !follow <player>");

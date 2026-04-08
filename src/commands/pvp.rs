@@ -2,6 +2,7 @@ use azalea::ecs::query::With;
 use azalea::entity::metadata::Player;
 use azalea::player::GameProfileComponent;
 
+use crate::FollowingData;
 use crate::commands::CmdCtx;
 
 pub async fn execute_pvp(args: &[&str], ctx: CmdCtx<'_>) {
@@ -14,7 +15,10 @@ pub async fn execute_pvp(args: &[&str], ctx: CmdCtx<'_>) {
 
             ctx.reply("Attacking you");
 
-            ctx.state.following_entity.lock().replace(sender.clone());
+            ctx.state
+                .following_data
+                .lock()
+                .replace(FollowingData::new(sender.clone()));
             ctx.state.pvp_target.lock().replace(sender);
         }
         [name] => {
@@ -30,7 +34,10 @@ pub async fn execute_pvp(args: &[&str], ctx: CmdCtx<'_>) {
 
             ctx.reply(format!("Attacking {name}"));
 
-            ctx.state.following_entity.lock().replace(player.clone());
+            ctx.state
+                .following_data
+                .lock()
+                .replace(FollowingData::new(player.clone()));
             ctx.state.pvp_target.lock().replace(player);
         }
         _ => {
