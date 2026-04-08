@@ -5,8 +5,10 @@ use azalea::{
     registry::builtin::ItemKind,
 };
 
+use crate::item::extensions::LickbotMenuExt;
+
 pub fn best_weapon_in_hotbar(menu: &Menu) -> usize {
-    let hotbar_slots = &menu.slots()[menu.hotbar_slots_range()];
+    let hotbar_slots = menu.hotbar_slots();
 
     hotbar_slots
         .iter()

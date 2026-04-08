@@ -6,6 +6,8 @@ use azalea::{
 };
 use tracing::{debug, warn};
 
+use crate::item::extensions::LickbotMenuExt;
+
 const AXE_HOTBAR_INDEX: usize = 0;
 const SWORD_HOTBAR_INDEX: usize = 1;
 const PICKAXE_HOTBAR_INDEX: usize = 2;
@@ -15,12 +17,11 @@ const HOE_HOTBAR_INDEX: usize = 4;
 pub fn sort_hotbar(bot: &Client) {
     let inventory_menu = bot.menu();
     let mut lazyinv = LazyInventory::new(bot);
-    let hotbar_start = *inventory_menu.hotbar_slots_range().start();
 
     if let Some((best_slot, best_kind)) = best_axe(&inventory_menu)
-        && best_slot != hotbar_start + AXE_HOTBAR_INDEX
+        && best_slot != inventory_menu.hotbar_index_to_slot_index(AXE_HOTBAR_INDEX)
     {
-        debug!("Swapping {best_kind} at {best_slot} to slot {AXE_HOTBAR_INDEX}");
+        debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {AXE_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -31,9 +32,9 @@ pub fn sort_hotbar(bot: &Client) {
         });
     }
     if let Some((best_slot, best_kind)) = best_sword(&inventory_menu)
-        && best_slot != hotbar_start + SWORD_HOTBAR_INDEX
+        && best_slot != inventory_menu.hotbar_index_to_slot_index(SWORD_HOTBAR_INDEX)
     {
-        debug!("Swapping {best_kind} at {best_slot} to slot {SWORD_HOTBAR_INDEX}");
+        debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {SWORD_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -43,9 +44,9 @@ pub fn sort_hotbar(bot: &Client) {
         });
     }
     if let Some((best_slot, best_kind)) = best_pickaxe(&inventory_menu)
-        && best_slot != hotbar_start + PICKAXE_HOTBAR_INDEX
+        && best_slot != inventory_menu.hotbar_index_to_slot_index(PICKAXE_HOTBAR_INDEX)
     {
-        debug!("Swapping {best_kind} at {best_slot} to slot {PICKAXE_HOTBAR_INDEX}");
+        debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {PICKAXE_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -55,9 +56,9 @@ pub fn sort_hotbar(bot: &Client) {
         });
     }
     if let Some((best_slot, best_kind)) = best_shovel(&inventory_menu)
-        && best_slot != hotbar_start + SHOVEL_HOTBAR_INDEX
+        && best_slot != inventory_menu.hotbar_index_to_slot_index(SHOVEL_HOTBAR_INDEX)
     {
-        debug!("Swapping {best_kind} at {best_slot} to slot {SHOVEL_HOTBAR_INDEX}");
+        debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {SHOVEL_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
@@ -67,9 +68,9 @@ pub fn sort_hotbar(bot: &Client) {
         });
     }
     if let Some((best_slot, best_kind)) = best_hoe(&inventory_menu)
-        && best_slot != hotbar_start + HOE_HOTBAR_INDEX
+        && best_slot != inventory_menu.hotbar_index_to_slot_index(HOE_HOTBAR_INDEX)
     {
-        debug!("Swapping {best_kind} at {best_slot} to slot {HOE_HOTBAR_INDEX}");
+        debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {HOE_HOTBAR_INDEX}");
         let Some(inventory_ref) = lazyinv.get() else {
             return;
         };
