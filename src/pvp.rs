@@ -1,10 +1,7 @@
 use azalea::prelude::*;
 use tracing::{debug, trace};
 
-use crate::{
-    State,
-    item::{inventory::sort_hotbar, weapon::best_weapon_in_hotbar},
-};
+use crate::{State, item::weapon::best_weapon_in_hotbar};
 
 pub fn pvp_tick(bot: &Client, state: &State) {
     let target_guard = state.pvp_target.lock();
@@ -17,7 +14,7 @@ pub fn pvp_tick(bot: &Client, state: &State) {
     }
 
     if bot.ticks_connected().is_multiple_of(20) && !bot.is_mining() {
-        sort_hotbar(bot);
+        // TODO: fix sort_inventory (its async now)
 
         let best_slot = best_weapon_in_hotbar(&bot.menu());
         if best_slot as u8 != bot.selected_hotbar_slot() {

@@ -76,6 +76,7 @@ pub async fn execute(input: &str, ctx: CmdCtx<'_>) {
         "pos" => misc::execute_pos(&args, ctx).await,
         "inventory" => misc::execute_inventory(&args, ctx).await,
         "players" => misc::execute_players(&args, ctx).await,
+        "sortinv" => misc::execute_sortinv(&args, ctx).await,
         "pathfinderstate" => misc::execute_pathfinderstate(&args, ctx).await,
         "pathfindermoves" => misc::execute_pathfindermoves(&args, ctx).await,
         other => ctx.reply(format!("Unknown command: {other}")),

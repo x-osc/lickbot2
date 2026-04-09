@@ -10,7 +10,10 @@ use azalea::{
     },
 };
 
-use crate::commands::{CmdCtx, stop_all};
+use crate::{
+    commands::{CmdCtx, stop_all},
+    item::inventory::sort_inventory,
+};
 
 pub async fn execute_stop(_args: &[&str], ctx: CmdCtx<'_>) {
     ctx.reply("Stopping");
@@ -65,6 +68,10 @@ pub async fn execute_players(_args: &[&str], ctx: CmdCtx<'_>) {
             uuid
         ));
     }
+}
+
+pub async fn execute_sortinv(_args: &[&str], ctx: CmdCtx<'_>) {
+    sort_inventory(ctx.bot).await;
 }
 
 pub async fn execute_pathfinderstate(_args: &[&str], ctx: CmdCtx<'_>) {
