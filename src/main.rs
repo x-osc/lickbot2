@@ -16,11 +16,12 @@ use shadow_rs::shadow;
 use tracing::{debug, error, info, trace, warn};
 
 use crate::commands::{CmdCtx, execute};
-use crate::pvp::pvp_tick;
+use crate::task::{Task, TaskContext, TaskStatus};
 
 mod commands;
 mod item;
 mod pvp;
+mod task;
 
 shadow!(build);
 
@@ -110,12 +111,57 @@ fn deadlock_detection_thread() {
 #[derive(Clone, Component, Default)]
 pub struct State {
     pub following_data: Arc<Mutex<Option<FollowingData>>>,
-    pub pvp_target: Arc<Mutex<Option<EntityRef>>>,
+    pub tasks: Arc<Mutex<Vec<Box<dyn Task>>>>,
 }
 
 impl State {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    // TODO: make task management not methods on state lol
+    pub fn push_task(&self, task: impl Task + 'static, bot: &Client) {
+        let ctx = TaskContext {
+            bot: bot.clone(),
+            state: self.clone(),
+        };
+        let mut tasks = self.tasks.lock();
+
+        tasks.push(Box::new(task));
+        tasks.last_mut().unwrap().launch(ctx);
+    }
+
+    pub fn tick_tasks(&self, bot: &Client) {
+        let ctx = TaskContext {
+            bot: bot.clone(),
+            state: self.clone(),
+        };
+        let status = {
+            let mut tasks = self.tasks.lock();
+            let Some(task) = tasks.last_mut() else {
+                return;
+            };
+            task.tick(ctx)
+        };
+
+        match status {
+            TaskStatus::Continue => {}
+            TaskStatus::Finished => {
+                self.tasks.lock().pop();
+            }
+            TaskStatus::Push(new_task) => self.push_task(new_task, bot),
+        };
+    }
+
+    pub fn stop_all_tasks(&self, bot: &Client) {
+        let tasks: Vec<_> = self.tasks.lock().drain(..).collect();
+        let ctx = TaskContext {
+            bot: bot.clone(),
+            state: self.clone(),
+        };
+        for mut task in tasks {
+            task.cancel(ctx.clone());
+        }
     }
 }
 
@@ -187,7 +233,8 @@ async fn handle(bot: Client, event: azalea::Event, state: State) {
         }
         azalea::Event::Tick => {
             follow_tick(&bot, &state);
-            pvp_tick(&bot, &state);
+
+            state.tick_tasks(&bot);
         }
         azalea::Event::Death(death) => {
             // TODO: why dis happen + fix lib

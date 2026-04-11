@@ -1,5 +1,4 @@
 use azalea::{
-    container::ContainerHandle,
     inventory::{Menu, operations::SwapClick},
     prelude::*,
     registry::builtin::ItemKind,
@@ -22,16 +21,20 @@ const LEGS_SLOT_INDEX: usize = 7;
 const FEET_SLOT_INDEX: usize = 8;
 
 pub async fn sort_inventory(bot: &Client) {
-    let inventory_menu = bot.menu();
-    let mut lazyinv = LazyInventory::new(bot);
+    if !should_sort_inventory(&bot.menu()) {
+        return;
+    }
+
+    let Some(inventory_ref) = bot.open_inventory() else {
+        warn!("bot tried to open inventory while another container was open");
+        return;
+    };
+    let inventory_menu = inventory_ref.menu().unwrap();
 
     if let Some((best_slot, best_kind)) = best_axe(&inventory_menu)
         && best_slot != inventory_menu.hotbar_index_to_slot_index(AXE_HOTBAR_INDEX)
     {
         debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {AXE_HOTBAR_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             // target slot is hotbar relative this isnt a mistake lmao
@@ -43,9 +46,6 @@ pub async fn sort_inventory(bot: &Client) {
         && best_slot != inventory_menu.hotbar_index_to_slot_index(SWORD_HOTBAR_INDEX)
     {
         debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {SWORD_HOTBAR_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             target_slot: SWORD_HOTBAR_INDEX as u8,
@@ -56,9 +56,6 @@ pub async fn sort_inventory(bot: &Client) {
         && best_slot != inventory_menu.hotbar_index_to_slot_index(PICKAXE_HOTBAR_INDEX)
     {
         debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {PICKAXE_HOTBAR_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             target_slot: PICKAXE_HOTBAR_INDEX as u8,
@@ -69,9 +66,6 @@ pub async fn sort_inventory(bot: &Client) {
         && best_slot != inventory_menu.hotbar_index_to_slot_index(SHOVEL_HOTBAR_INDEX)
     {
         debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {SHOVEL_HOTBAR_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             target_slot: SHOVEL_HOTBAR_INDEX as u8,
@@ -82,9 +76,6 @@ pub async fn sort_inventory(bot: &Client) {
         && best_slot != inventory_menu.hotbar_index_to_slot_index(HOE_HOTBAR_INDEX)
     {
         debug!("Swapping {best_kind} at slot {best_slot} to hotbar slot {HOE_HOTBAR_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
         inventory_ref.click(SwapClick {
             source_slot: best_slot as u16,
             target_slot: HOE_HOTBAR_INDEX as u8,
@@ -97,9 +88,6 @@ pub async fn sort_inventory(bot: &Client) {
         && best_slot != HEAD_SLOT_INDEX
     {
         debug!("Swapping {best_kind} at slot {best_slot} to armor slot {HEAD_SLOT_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
 
         if inventory_menu.slot(HEAD_SLOT_INDEX).is_some() {
             inventory_ref.shift_click(HEAD_SLOT_INDEX);
@@ -114,9 +102,6 @@ pub async fn sort_inventory(bot: &Client) {
         && best_slot != CHEST_SLOT_INDEX
     {
         debug!("Swapping {best_kind} at slot {best_slot} to armor slot {CHEST_SLOT_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
 
         if inventory_menu.slot(CHEST_SLOT_INDEX).is_some() {
             inventory_ref.shift_click(CHEST_SLOT_INDEX);
@@ -131,9 +116,6 @@ pub async fn sort_inventory(bot: &Client) {
         && best_slot != LEGS_SLOT_INDEX
     {
         debug!("Swapping {best_kind} at slot {best_slot} to armor slot {LEGS_SLOT_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
 
         if inventory_menu.slot(LEGS_SLOT_INDEX).is_some() {
             inventory_ref.shift_click(LEGS_SLOT_INDEX);
@@ -148,9 +130,6 @@ pub async fn sort_inventory(bot: &Client) {
         && best_slot != FEET_SLOT_INDEX
     {
         debug!("Swapping {best_kind} at slot {best_slot} to armor slot {FEET_SLOT_INDEX}");
-        let Some(inventory_ref) = lazyinv.get() else {
-            return;
-        };
 
         if inventory_menu.slot(FEET_SLOT_INDEX).is_some() {
             inventory_ref.shift_click(FEET_SLOT_INDEX);
@@ -162,35 +141,55 @@ pub async fn sort_inventory(bot: &Client) {
     };
 }
 
-/// only opens inventory if necessary
-struct LazyInventory<'a> {
-    bot: &'a Client,
-    inventory_ref: Option<ContainerHandle>,
-}
-
-impl<'a> LazyInventory<'a> {
-    fn new(bot: &'a Client) -> Self {
-        Self {
-            bot,
-            inventory_ref: None,
-        }
+pub fn should_sort_inventory(menu: &Menu) -> bool {
+    if let Some((best_slot, _)) = best_axe(&menu)
+        && best_slot != menu.hotbar_index_to_slot_index(AXE_HOTBAR_INDEX)
+    {
+        return true;
+    }
+    if let Some((best_slot, _)) = best_sword(&menu)
+        && best_slot != menu.hotbar_index_to_slot_index(SWORD_HOTBAR_INDEX)
+    {
+        return true;
+    }
+    if let Some((best_slot, _)) = best_pickaxe(&menu)
+        && best_slot != menu.hotbar_index_to_slot_index(PICKAXE_HOTBAR_INDEX)
+    {
+        return true;
+    }
+    if let Some((best_slot, _)) = best_shovel(&menu)
+        && best_slot != menu.hotbar_index_to_slot_index(SHOVEL_HOTBAR_INDEX)
+    {
+        return true;
+    }
+    if let Some((best_slot, _)) = best_hoe(&menu)
+        && best_slot != menu.hotbar_index_to_slot_index(HOE_HOTBAR_INDEX)
+    {
+        return true;
     }
 
-    /// returns a reference to the currently open inventory, opening it if necessary
-    ///
-    /// Returns none if another container is already open.
-    fn get(&mut self) -> Option<&ContainerHandle> {
-        if self.inventory_ref.is_none() {
-            match self.bot.open_inventory() {
-                Some(r) => self.inventory_ref = Some(r),
-                None => {
-                    warn!("bot tried to open inventory while another container was open");
-                    return None;
-                }
-            }
-        }
-        self.inventory_ref.as_ref()
-    }
+    if let Some((best_slot, _)) = best_helmet(&menu)
+        && best_slot != HEAD_SLOT_INDEX
+    {
+        return true;
+    };
+    if let Some((best_slot, _)) = best_chestplate(&menu)
+        && best_slot != CHEST_SLOT_INDEX
+    {
+        return true;
+    };
+    if let Some((best_slot, _)) = best_leggings(&menu)
+        && best_slot != LEGS_SLOT_INDEX
+    {
+        return true;
+    };
+    if let Some((best_slot, _)) = best_boots(&menu)
+        && best_slot != FEET_SLOT_INDEX
+    {
+        return true;
+    };
+
+    false
 }
 
 const AXE_ORDER: [ItemKind; 7] = [
